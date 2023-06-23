@@ -1,0 +1,47 @@
+---
+- name: Run the equivalent of "apt-get update" as a separate step
+  package:
+    update_cache: yes
+  tags: update
+
+- name: Update all packages to their latest version
+  package:
+    name: "*"
+    state: latest
+  tags: update
+
+- name: Remove dependencies that are no longer required
+  package:
+    autoremove: yes
+  tags: update
+
+- name: Set timezone to Asia/Jakarta
+  timezone:
+    name: Asia/Jakarta
+  tags: timezone
+
+- name: Install git apt-transport-https curl wget lsb-core python3-pip libpq-dev
+  package:
+    name:
+      - git
+      - apt-transport-https
+      - curl
+      - wget
+      - lsb-core
+      - python3-pip
+      - libpq-dev
+      - python3
+      - python3-psycopg2
+    state: present
+  tags: common
+
+- name: Install psycopg2
+  pip:
+    name: psycopg2
+  tags: common
+
+- name: Stop and disable firewalld.
+  service:
+    name: ufw
+    state: stopped
+    enabled: False

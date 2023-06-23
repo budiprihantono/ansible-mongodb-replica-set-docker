@@ -1,0 +1,14 @@
+mongodb_root_user: "root"
+mongodb_root_pass: "OGjKvSJ5eFapXwNE"
+
+mongodb_admin_user: "asdasd"
+mongodb_admin_password: "asdasda"
+
+mongodb_host: 10.10.10.60
+mongodb_port: "27017"
+
+member_1_replica_set: "10.10.10.60:27017"
+member_2_replica_set: "10.10.10.61:27017"
+member_3_replica_set: "10.10.10.62:27017"
+
+replica_set_name: "rs0"

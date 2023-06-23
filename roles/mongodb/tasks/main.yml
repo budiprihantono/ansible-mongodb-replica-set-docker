@@ -1,0 +1,94 @@
+---
+- name: Add an Apt signing key mongodb
+  ansible.builtin.apt_key:
+    url: https://www.mongodb.org/static/pgp/server-6.0.asc
+    state: present
+
+- name: MongoDB Create a list mongodb
+  lineinfile: dest=/etc/apt/sources.list.d/mongodb-org-6.0.list line="deb https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" state=present create=yes
+
+- name: Run the equivalent of "apt-get update" as a separate step
+  package:
+    update_cache: yes
+  tags: update
+
+- name: Update all packages to their latest version
+  package:
+    name: "*"
+    state: latest
+  tags: update
+  
+- name: Install mongosh pymongo
+  package:
+    name:
+      - python3-pip
+      - python3
+      - python3-psycopg2
+      - python3-pymongo
+      - mongodb-mongosh
+      - mongodb-clients
+    state: present
+  tags: mongodb
+
+- name: Create mongodb data directory if it does not exist
+  file:
+    path: /opt/mongodb/data
+    state: directory
+    mode: "0755"
+  tags: mongodb
+
+- name: Create mongodb auth directory if it does not exist
+  file:
+    path: /opt/mongodb/data/auth/
+    state: directory
+    mode: "0600"
+  tags: mongodb
+
+- name: deploying keyfile for replica set
+  template:
+    src: file.key
+    dest: /opt/mongodb/data/auth/file.key
+    owner: systemd-coredump
+    group: systemd-coredump
+    mode: "0600"
+
+- name: Create mongodb container
+  docker_container:
+    name: mongodb
+    image: mongo:5.0-focal
+    state: started
+    restart: yes
+    restart_policy: always
+    ports:
+      - 27017:27017
+    volumes:
+      - /opt/mongodb/data:/data/db
+      - /opt/mongodb/data/auth/file.key:/data/auth/file.key
+    env:
+      MONGO_INITDB_ROOT_USERNAME: "{{ mongodb_root_user }}"
+      MONGO_INITDB_ROOT_PASSWORD: "{{ mongodb_root_pass }}"
+    log_driver: "json-file"
+    log_options:
+      max-size: 1g
+      max-file: "1"
+    command: "--bind_ip_all --replSet {{ replica_set_name }} --dbpath /data/db --keyFile /data/auth/file.key --wiredTigerCacheSizeGB 1 --setParameter tcmallocReleaseRate=10"
+  tags: mongodb
+
+- name: Create a replicaset
+  mongodb_replicaset:
+    login_host: "{{ mongodb_host }}"
+    login_port: "{{ mongodb_port }}"
+    login_user: "{{ mongodb_root_user }}"
+    login_password: "{{ mongodb_root_pass }}"
+    login_database: admin
+    replica_set: "{{ replica_set_name }}"
+    heartbeat_timeout_secs: 5
+    election_timeout_millis: 1000
+    members:
+    - host: "{{ member_1_replica_set }}"
+      priority: 1
+    - host: "{{ member_2_replica_set }}"
+      priority: 0.5
+    - host: "{{ member_3_replica_set }}"
+      priority: 0.5
+    validate: no

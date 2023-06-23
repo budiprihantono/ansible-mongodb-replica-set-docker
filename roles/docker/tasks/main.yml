@@ -1,0 +1,68 @@
+---
+- name: Uninstall old versions of docker
+  package:
+    name:
+      - docker
+      - docker-engine
+      - docker.io
+      - containerd
+      - runc
+    state: absent
+  tags: docker
+
+- name: Install packages to allow apt to use a repository over HTTPS
+  package:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+  tags: docker
+
+- name: Add Docker’s official GPG key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    keyring: /usr/share/keyrings/docker-archive-keyring.gpg
+    state: present
+  tags: docker
+
+- name: Set up the docker stable repository
+  remote_user: root
+  apt_repository:
+    repo: deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+    state: present
+    update_cache: true
+  tags: docker
+
+- name: Install docker
+  package:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    state: present
+  tags: docker
+
+- name: Start and enable docker and containerd service
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - docker
+    - containerd
+  tags: docker
+
+- name: "Add '{{ ansible_ssh_user }}' to group docker"
+  user:
+    name: "{{ ansible_ssh_user }}"
+    groups: docker
+    append: yes
+  tags: docker-user
+
+- name: Install docker python package
+  pip:
+    name: docker
+  tags: docker
